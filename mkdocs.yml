@@ -1,0 +1,4 @@
+site_name: Standardization
+site_url: https://standarisasi.megalogic.id
+nav:
+  - Home: "index.md"
