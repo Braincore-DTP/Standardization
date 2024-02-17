@@ -100,4 +100,4 @@ Ada beberapa meeting penting di dalam Algo Network:
 - Training of Trainer
 - Meeting divisi
 
-[Kembali ke Home](../index.md)
+[Kembali ke Home](./index.md)
