@@ -82,8 +82,52 @@
 <li>API</li>
 </ul>
 <p>Web Monolitik artinya kita mendeploy backend dalam satu aplikasi Express yang menyediakan UI tampilan web dalam 1 direktori proyek yang sama, dengan menggunakan templating engine bernama EJS <code>(Embedded JavaScript)</code></p>
-<p>Sedangkan API adalah kita hanya mendeploy backend dan menjalankannya sebagai API, dalam hal ini, konteksnya adalah kita mereturn <code>JSON</code></p>
-<p>Untuk Express, ada arsitektur yang kita perlu sepakati. Buat sebuah proyek Node.js baru dengan menggunakan command <code>npm init</code>, dengan starting pointnya di <code>server.js</code>, isinya adalah seperti ini</p>
+<p>Sedangkan API adalah kita hanya mendeploy backend dan menjalankannya sebagai API, dalam hal ini, konteksnya adalah kita mereturn <code>JSON</code>.</p>
+<h3 id="web-monolitik">Web Monolitik</h3>
+<p><em>on progress</em></p>
+<p></br></p>
+<h3 id="api">API</h3>
+<p>Mari kita mulai dengan API, namun sebelum lebih jauh, ada arsitektur yang kita perlu sepakati terlebih dahulu. Pertama mari kita lihat struktur folder dari proyek yang akan dibuat, yaitu sebagai berikut:</p>
+<pre><code>/app
+├── .github/
+│   ├── workflows/
+│       ├── node.js.yml
+├── db/
+│   ├── connect.js
+├── helpers/
+│   ├── forExample.js
+│   ├── hashing.js
+│   ├── response.js
+├── middleware/
+│   ├── cache.js
+│   ├── isAuthenticated.js
+│   ├── rateLimiter.js
+├── models/
+│   ├── models.js
+├── routes/
+│   ├── index/
+│       ├── index.controller.js
+│       ├── index.router.js
+│       ├── index.test.js
+/node_modules
+/.dockerignore
+/.env
+/.gitignore
+/api-docs.yaml
+/app.js
+/Dockerfile
+/LICENSE
+/package-lock.json
+/package.json
+/README.md
+/server.js
+</code></pre>
+<h4 id="ringkasan-struktur-proyek">Ringkasan Struktur Proyek</h4>
+<p>Bagaimana struktur foldernya hehe, kamu kebingungan? Santuy, mari kita bahas 1 per 1. Jadi struktur folder diatas merupakan struktur folder yang menurut kami cukup baik dan nyaman digunakan untuk kebutuhan pembuatan API menggunakan ExpressJS. Di arsitektur ini kita membuat proyeknya nodeJS nya dengan type 'commonJS' yah, (reminder) jadi saat modularisasi atau pemanggilan file atau librari kita gunakan <code>const ... = require('nama file/librari')</code>, dan untuk mengexport variabel/function/class kita gunakan <code>module.exports = nama variable/function/class</code>.
+</br>
+Nah untuk memulai sobat bisa membuatnya secara manual, atau bisa menduplikat template yang sudah kami sediakan ya di repositori github <a href="https://github.com/algonacci/express-docker-template">algonacci</a>. Namun, walau sobat bisa langsung menduplikat, usahakan tetap mengerti dengan arsitektur tersebut. Oleh karena itu, yuk simak penjelasan-penjelasan tentang arsitektur tersebut dibawah:</p>
+<h5 id="starting-point-serverjs">Starting Point (server.js)</h5>
+<p>Pertama, jika sobat memulainya secara manual, buatlah sebuah proyek Node.js baru dengan menggunakan command <code>npm init</code>, dengan starting pointnya di <code>server.js</code>, lalu isi dengan code seperti berikut:</p>
 <pre><code>require(&quot;dotenv&quot;).config();
 const http = require(&quot;http&quot;);
 const app = require(&quot;./app&quot;);
@@ -103,6 +147,286 @@ const start = async () =&gt; {
 
 start();
 </code></pre>
+<p>Pada kode tersebut sobat bisa lihat ada sebuat variabel yang di panggil dari sebuah file, yaitu app. Setelah kita membuat starting point (<code>server.js</code>), selanjutnya root folder kita buat lagi 1 file dengan nama <code>app.js</code>. Di file ini kita akan melakukan inisialisasi serta pemanggilan-pemanggilan router agar terlihat rapi. Dengan kode seperti berikut:</p>
+<pre><code>const express = require(&quot;express&quot;);
+const morgan = require(&quot;morgan&quot;);
+const cors = require(&quot;cors&quot;);
+const app = express();
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs')
+const apiDocs = YAML.load('./api-docs.yaml')
+
+//Middleware
+const { isAuthenticated } = require(&quot;./middleware/isAuthenticated&quot;);
+
+//Router
+const indexRouter = require(&quot;./routes/index/index.router&quot;);
+
+app.use(express.json());
+app.use(morgan(&quot;dev&quot;));
+app.use(cors());
+
+//Set API DOCS with Swagger
+app.use(&quot;/api-docs&quot;, swaggerUi.serve, swaggerUi.setup(apiDocs))
+
+//Regis Routes
+app.use(&quot;/&quot;, isAuthenticated, indexRouter);
+
+module.exports = app;
+</code></pre>
+<h5 id="routes">Routes/</h5>
+<p>Hal yang cukup berbeda dari kebanyakan arsitektur nodeJS yang lain dengan arsitektu yang kami buat yaitu, terletak pada folder <code>routes/</code> ini. Pada folder ini, diisi kan dengan sub folder lagi sesuai kebutuhan/fitur yang ingin dikembangkan, lalu didalam sub folder ini berisikan file <code>.router.js</code> untuk mengatur jalurnya, <code>.controller.js</code> untuk membuat logika programnya, dan <code>.test.js</code> untuk membuat testing dari jalur/feat tersebut. Seperti sobat tahu, biasanya kebanyakan arsitektur nodeJS memisahkan ketiga hal tersebut (router/controller/testing) pada folder folder terpisah. Disini kami menggabungkannya karena memudahkan dalam pengerjaannya baik perorangan maupun team, dimana kita bisa mengerjakannya perfitur, sehingga lebih rapi dan terstruktur.</br>
+Dalam pembuatana nama folder dan file nya di namakan dengan nama fitur yang kita buat/kembangkan, misal fitur 'index' maka sub folder dari <code>routes/</code> adalah folder <code>index/</code> yang berisi 3 file yaitu <code>index.controller.js</code>, <code>index.router.js</code>, dan <code>index.test.js</code>. Berikut adalah contoh kodenya:</p>
+<h6 id="indexcontrollerjs"><em>index.controller.js</em></h6>
+<pre><code>const { forExample } = require(&quot;../../helpers/forExample&quot;);
+const response = require(&quot;./../../helpers/response&quot;)
+
+const helloIndex = (req, res) =&gt; {
+  forExample();
+
+  response.res200(&quot;Success fetching the API!&quot;, null, res)
+};
+
+const helloPost = (req, res) =&gt; {
+  const inputData = req.body;
+  console.log(inputData);
+  if (Object.keys(inputData).length !== 0) {
+    response.res201(&quot;Success create data&quot;, inputData, res)
+  } else {
+    response.res400(res)
+  }
+};
+
+const getData = async (req, res) =&gt; {
+  try {
+    let result = 'Testing '.repeat(10000)
+
+    response.resCustom(200, &quot;Success fetching data&quot;, result, res)
+
+  } catch (error) {
+    console.log(error.message)
+    response.res500(res)
+  }
+};
+
+module.exports = { helloIndex, helloPost, getData };
+</code></pre>
+<h6 id="indexrouterjs"><em>index.router.js</em></h6>
+<pre><code>const express = require(&quot;express&quot;);
+const router = express.Router();
+const compression = require(&quot;compression&quot;);
+
+//Middleware
+const cache = require('../../config/cache')
+const limit = require(&quot;./../../config/rateLimiter&quot;)
+
+//Controller
+const index = require(&quot;./index.controller&quot;);
+
+//Routes
+router.route(&quot;/&quot;).get(limit(10) ,index.helloIndex); //Set limiter 10 request/minutes
+router.route(&quot;/&quot;).post(index.helloPost);
+router.route(&quot;/test&quot;).get(compression(), cache('1 minutes'),index.getData); //Set compression and cache
+
+module.exports = router;
+</code></pre>
+<h6 id="indextestjs"><em>index.test.js</em></h6>
+<pre><code>const { response } = require(&quot;express&quot;);
+const request = require(&quot;supertest&quot;);
+const app = require(&quot;../../app&quot;);
+
+const token = 'Ceritanya Token JWT';
+
+describe(&quot;Test GET /&quot;, () =&gt; {
+  test(&quot;It should respond with 200 success&quot;, async () =&gt; {
+    const response = await request(app).get(&quot;/&quot;)
+    .set(&quot;Authorization&quot;, `Bearer ${token}`)
+    .expect(&quot;Content-Type&quot;, /json/);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: {
+        code: 200,
+        message: &quot;Success fetching the API!&quot;,
+      },
+      data: null,
+    });
+  });
+});
+
+...dst
+</code></pre>
+<h5 id="middleware">Middleware/</h5>
+<p>Folder middleware ini sama seperti arsitektur nodejs lainnya, disini kita menyimpan file-file yang berfungsi sebagai middleware atau file yang berisi fungsi untuk menengahi antara router dan controller. Biasanya berisikan pengecekan atau validasi seperti authentikasi/authorisasi, cache, rate limiter atau yang lainnya. Pada template yang kami buat kami menyediakan middleware yang umum digunakan yakni file <code>isAuthenticate.js</code>. Berikut contoh kodenya:</p>
+<pre><code>const jwt = require(&quot;jsonwebtoken&quot;)
+const response = require(&quot;./../helpers/response&quot;)
+
+const isAuthenticated = (req, res, next) =&gt; {
+  const { authorization } = req.headers;
+
+  if (!authorization) {
+    console.log(&quot;Token is not exist&quot;)
+    return response.res401(res);
+
+  }
+
+  const token = authorization.split(&quot; &quot;)[1] || authorization;
+
+  try {
+    // // Uncomment to use Basic verify jwt token
+    // const secret = process.env.JWT_KEY;
+    // const jwtDecode = jwt.verify(token, secret);
+
+    // //create user data to use in server, adjust with your data when you create token first time
+    // const user = {
+    //   id: jwtDecode.id,
+    //   email: jwtDecode.email,
+    //   name: jwtDecode.name,
+    //   role: jwtDecode.role,
+    //   token,
+    // };
+
+    // req.user = user; //set data to use in the next
+
+    console.log(&quot;Anjay Authenticate&quot;)
+    next();
+  } catch (error) {
+    console.log(error.message);
+    return response.res401(res);
+  }
+};
+
+module.exports = { isAuthenticated };
+</code></pre>
+<h5 id="helpers">Helpers/</h5>
+<p>Folder <code>helpers/</code> lebih kurang sama dengan <code>utils/</code> dimana didalam folder ini disimpan file-file fungsi yang akan sering digunakan. Seperti customisasi response, atau pengecekan data di database, atau yang lainnya. Untuk penamaan filenya disesuaikan dengan fungsi yang dibuat, berikut contoh isi kode dari file <code>isExample.js</code> dari template yang kami sediakan:</p>
+<pre><code>const forExample = () =&gt; {
+  console.log(&quot;Anjay pake helper&quot;);
+};
+
+module.exports = { forExample };
+</code></pre>
+<p>note: untuk file <code>isExample.js</code> tersebut hanya contoh, sobat bisa ubah dan sesuakan penamaan dan isinya sesuai kebutuhan sobat, atau sobat bisa hapus jika tidak diperlukan.</p>
+<h5 id="db-database">Db/ (Database)</h5>
+<p>Jika mendengar API pasti tidak jauh dari yang namanya database, umumnya jika kita membuat sebuah API biasanya pasti melakukan CRUD ke database baik SQL (MYSQL/POSTGREE/dll) atau bahkan NOSQL (MongoDB/Firestore/dll). Sehingga kita pasti perlu melakukan pembuatan koneksi ke database tersebut. Nah, disinilah kita gunakan folder <code>db/</code> untuk menyimpan file yang mengandung kode untuk melakukan koneksi ke database. Berikut contoh kode file koneksi ke firestore (noSql):</p>
+<pre><code>var admin = require(&quot;firebase-admin&quot;);
+
+admin.initializeApp({
+    credential: admin.credential.cert(JSON.parse(process.env.SERVICEACCOUNTKEY))
+});
+
+const db = admin.firestore()
+
+module.exports = db
+</code></pre>
+<h5 id="models">Models/</h5>
+<p>Jika kita melakukan koneksi atau aktifitas CRUD ke database maka kita juga tidak jauh dari yang namanya model. Apa itu model? model merupakan tempat kita membuat sebuah inisialisasi atau mendisign tabel/schema(SQL) di proyek kita. Biasanya saat menerapkan konsep model seperti ini kita menggunakan yang namanya ORM (Object Relation Mapping) misalnya seperti sequelize/prisma/typeorm/lainnya. Nah, di folder <code>models/</code> ini lah tempat menyimpan file-file model tersebut.</p>
+<h5 id="githubworkflows">.github/Workflows</h5>
+<p>Terakhir ada folder <code>.github/</code> yang berisi subfolder <code>Workflows/</code>. Apakah ini? nah, disini merupakan folder tempat kita menyimpan alur kerja atau simplenya file automasi yang berisi kode langkah-langkah pengerjaan saat terjadi komunikasi ke github kita. Misalnya, seperti saat terjadi push/pull/lainnya ke repo github kita apa yang akan kita lakukan. Untuk template yang kami sediakan, kami sudah membuat file automasi untuk melakukan pengecekan semua kode-kode dari file <code>.test.js</code> yang kita buat, guna memastikan semua fitur yang kita buat dan sudah test berjalan dengan benar, baik di local maupun saat setelah di push ke github.</br>
+Berikut contoh kode dari file automasi <code>node.js.yaml</code> yang kami sediakan di template:</p>
+<pre><code>name: Express Docker Template Application
+
+on:
+  push:
+    branches: [&quot;main&quot;]
+  pull_request:
+    branches: [&quot;main&quot;]
+
+jobs:
+  build:
+    env:
+      CI: true
+      # MONGODB_URI: mongodb://localhost/nasa
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        # mongodb-version: [&quot;4.4&quot;]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: &quot;npm&quot;
+      - run: npm install
+      - run: npm test
+
+</code></pre>
+<p>note: Kode di atas melakukan pengecekan terhadap kode kita, di versi nodeJS 14.x, 16.x, dan 18.x</p>
+<h4 id="api-documentation">API Documentation</h4>
+<p>Jika kita membuat sebuah proyek API, pastinya kita akan membuat sebuah dokumentasi dari API tersebut betul? Nah, untuk membuat sebuah dokumentasi API ada banyak tools yang tersedia, seperti Postman/Swagger/ReDoc/lainnya. Disini kita akan menggunakan swagger sebagai tools untuk membuat dokumentasinya, mengapa agar kita bisa langsung membuatnya di dalam proyek kita, tanpa harus menginstall aplikasi ketiga atau membuat di website toolsnya tersebut. Di root folder proyek kita, sobat bisa lihat di file <code>app.js</code> ada potongan kode seperti berikut:</p>
+<pre><code>const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs')
+const apiDocs = YAML.load('./api-docs.yaml')
+
+...
+
+//Set API DOCS with Swagger
+app.use(&quot;/api-docs&quot;, swaggerUi.serve, swaggerUi.setup(apiDocs))
+
+...
+</code></pre>
+<p>Yap, seperti potongan kode di atas, jika kita ingin menggunakan swagger langsung di proyek kita, kita perlu menginstall 2 librari yakni, <code>swagger-ui-express</code> dan <code>yaml.js</code>. Disini kita menggunakan <code>swagger-ui-express</code> yang membuatkan otomatis tampilan dokumentasi swaggernya dan <code>yamljs</code> untuk membaca kode dokumentasi yang kita buat menggunakan file <code>.yaml</code> seperti <code>./api-docs.yaml</code> yang kami siapkan di template. Disini kita harus membuat terlebih dahulu dokumentasinya di file <code>api-docs.yaml</code> serperti contoh:</p>
+<pre><code>openapi: '3.0.2'
+
+info:
+  title: API Documentation
+  description: Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.
+  version: '1.0.0'
+
+servers:
+  - url: &quot;http://localhost:8080&quot;
+    description: Optional server description, e.g. Main (development) server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /:
+    get:
+      summary: Returns a list of users.
+      description: Optional extended description in CommonMark or HTML.
+      tags: 
+        - 'Index'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Response success for index routes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: object
+                    properties:
+                      code:
+                        type: integer
+                        format: int64
+                        example: 200
+                      message:
+                        type: string
+                        example: &quot;Success fetching the API!&quot;
+                  data:
+                    type: string
+                    example: null
+        '401':
+          description: Unauthorized user.
+        default:
+          description: Unexpected error
+
+</code></pre>
+<p>Kemudian kita daftarkan dan aktifkan seperti akhir potongan kode sebelumnya <code>app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(apiDocs))</code> sobat bisa mengganti path untuk dokumentasinya pada parameter pertama, untuk template yang kami sediakan, kami gunakan <code>/api-docs</code> untuk melihat dokumentasi dari API-nya.</p>
 <p><a href="../">Kembali ke Home</a></p></div>
             </div>
         </div>
