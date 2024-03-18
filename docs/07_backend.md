@@ -329,7 +329,7 @@ jobs:
 *note: Kode di atas melakukan pengecekan terhadap kode kita, di versi nodeJS 14.x, 16.x, dan 18.x*
 
 #### API Documentation
-Jika kita membuat sebuah proyek API, pastinya kita akan membuat sebuah dokumentasi dari API tersebut betul? Nah, untuk membuat sebuah dokumentasi API ada banyak tools yang tersedia, seperti Postman/Swagger/ReDoc/lainnya. Disini kita akan menggunakan swagger sebagai tools untuk membuat dokumentasinya, mengapa agar kita bisa langsung membuatnya di dalam proyek kita, tanpa harus menginstall aplikasi ketiga atau membuat di website toolsnya tersebut. Di root folder proyek kita, sobat bisa lihat di file `app.js` ada potongan kode seperti berikut:
+Jika kita membuat sebuah proyek API, pastinya kita akan membuat sebuah dokumentasi dari API tersebut betul? Nah, untuk membuat sebuah dokumentasi API ada banyak tools yang tersedia, seperti Postman/Swagger/ReDoc/lainnya. Disini kita akan menggunakan [swagger(https://swagger.io/docs/specification/basic-structure/)] sebagai tools untuk membuat dokumentasinya, mengapa agar kita bisa langsung membuatnya di dalam proyek kita, tanpa harus menginstall aplikasi ketiga atau membuat di website toolsnya tersebut. Di root folder proyek kita, sobat bisa lihat di file `app.js` ada potongan kode seperti berikut:
 ```
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs')
